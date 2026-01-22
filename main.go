@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"mime"
 	"os"
@@ -22,16 +23,73 @@ const (
 )
 
 func main() {
+	if len(os.Args) < 2 || isHelpArg(os.Args[1]) {
+		printUsage()
+		return
+	}
+
+	switch os.Args[1] {
+	case "feedback":
+		if err := runFeedback(os.Args[2:]); err != nil {
+			log.Fatal(err)
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func isHelpArg(arg string) bool {
+	switch arg {
+	case "-h", "--help", "help":
+		return true
+	default:
+		return false
+	}
+}
+
+func printUsage() {
+	fmt.Fprintf(os.Stderr, `Usage:
+  video-agent-skills feedback -video <path> [options]
+
+Options:
+  -video string     Path to a video file (required)
+  -model string     Gemini model name (default: %s)
+  -prompt string    Prompt to guide feedback
+  -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
+  -h, --help        Show help
+
+Examples:
+  video-agent-skills feedback -video ./examples/RefreshAgent-Demo-30s.mp4
+`, defaultModel)
+}
+
+func runFeedback(args []string) error {
 	var (
-		videoPath = flag.String("video", "", "Path to a video file")
-		model     = flag.String("model", defaultModel, "Gemini model name")
-		prompt    = flag.String("prompt", defaultPrompt, "Prompt to guide feedback")
-		apiKey    = flag.String("api-key", "", "Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)")
+		fs        = flag.NewFlagSet("feedback", flag.ContinueOnError)
+		videoPath = fs.String("video", "", "Path to a video file")
+		model     = fs.String("model", defaultModel, "Gemini model name")
+		prompt    = fs.String("prompt", defaultPrompt, "Prompt to guide feedback")
+		apiKey    = fs.String("api-key", "", "Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)")
+		help      = fs.Bool("help", false, "Show help")
+		h         = fs.Bool("h", false, "Show help")
 	)
-	flag.Parse()
+	fs.SetOutput(io.Discard)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printUsage()
+			return nil
+		}
+		return err
+	}
+	if *help || *h {
+		printUsage()
+		return nil
+	}
 
 	if *videoPath == "" {
-		log.Fatal("-video is required")
+		return errors.New("-video is required")
 	}
 
 	if err := loadEnvFile(defaultConfigEnvPath()); err != nil {
@@ -46,7 +104,7 @@ func main() {
 		key = strings.TrimSpace(os.Getenv("GOOGLE_API_KEY"))
 	}
 	if key == "" {
-		log.Fatal("missing API key: set GEMINI_API_KEY or GOOGLE_API_KEY, or pass -api-key")
+		return errors.New("missing API key: set GEMINI_API_KEY or GOOGLE_API_KEY, or pass -api-key")
 	}
 
 	ctx := context.Background()
@@ -55,12 +113,12 @@ func main() {
 		Backend: genai.BackendGeminiAPI,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	mimeType, err := detectVideoMIME(*videoPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	uploaded, err := client.Files.UploadFromPath(
@@ -71,12 +129,12 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	uploaded, err = waitForActiveFile(ctx, client, uploaded, 5*time.Second)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	parts := []*genai.Part{
@@ -90,10 +148,11 @@ func main() {
 
 	response, err := client.Models.GenerateContent(ctx, *model, contents, nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	fmt.Println(response.Text())
+	return nil
 }
 
 func detectVideoMIME(path string) (string, error) {
