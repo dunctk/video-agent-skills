@@ -22,6 +22,14 @@ Run the bundled binary in this skill folder:
 {skill_dir}/bin/video-agent-skills feedback \
   -video "{video_path}" \
   -prompt "{optional_user_prompt}"
+```
+
+Harshness tiers (optional):
+```bash
+{skill_dir}/bin/video-agent-skills feedback \
+  -video "{video_path}" \
+  -tone nice
+```
 
 For reverse-engineering the likely prompt used to make a video:
 
@@ -30,11 +38,11 @@ For reverse-engineering the likely prompt used to make a video:
   -video "{video_path}" \
   -prompt "{optional_user_prompt}"
 ```
-```
 
 Notes:
 - Omit `-prompt` if the user did not provide custom guidance.
 - You can pass `-model` or `-api-key` if the user specifies them.
+- Use `-tone` only for `feedback`. For `reverse`, it is ignored.
 - On Windows, the binary name ends with `.exe`.
 
 ## Output handling

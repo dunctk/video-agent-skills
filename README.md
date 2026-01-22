@@ -17,6 +17,12 @@ Then run:
 video-agent-skills feedback -video /path/to/video.mp4
 ```
 
+Control harshness with `-tone`:
+```bash
+video-agent-skills feedback -video /path/to/video.mp4 -tone nice
+video-agent-skills feedback -video /path/to/video.mp4 -tone super-harsh
+```
+
 Reverse engineer the likely prompt used to create a finished video:
 ```bash
 video-agent-skills reverse -video /path/to/video.mp4
@@ -43,6 +49,7 @@ Options:
   -video string     Path to a video file (required)
   -model string     Gemini model name (default: gemini-3-flash-preview)
   -prompt string    Prompt override (feedback or reverse)
+  -tone string      Feedback harshness: nice|normal|harsh|super-harsh (default: harsh)
   -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
 ```
 

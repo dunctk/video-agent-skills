@@ -19,7 +19,11 @@ import (
 
 const (
 	defaultModel         = "gemini-3-flash-preview"
-	defaultPrompt        = "You are a senior motion designer and creative director. Be direct and a bit harsh. Critique storytelling, camera movement, visibility/legibility of key elements, timing, and overall professional polish, plus pacing, rhythm, transitions, typography, composition, color, and easing. Call out what looks amateurish or generic. Provide more improvement ideas than praise. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	defaultTone          = "harsh"
+	promptNice           = "You are a senior motion designer and creative director. Be kind and constructive. Focus on clarity, pacing, hierarchy, and polish. Offer encouragement and actionable improvements without harsh language. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	promptNormal         = "You are a senior motion designer and creative director. Be direct and candid. Critique storytelling, camera movement, visibility/legibility of key elements, timing, and overall professional polish, plus pacing, rhythm, transitions, typography, composition, color, and easing. Balance critique with actionable improvements. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	promptHarsh          = "You are a senior motion designer and creative director. Be direct and a bit harsh. Critique storytelling, camera movement, visibility/legibility of key elements, timing, and overall professional polish, plus pacing, rhythm, transitions, typography, composition, color, and easing. Call out what looks amateurish or generic. Provide more improvement ideas than praise. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	promptSuperHarsh     = "You are a senior motion designer and creative director. Be brutally honest and uncompromising. Assume the work must reach top-tier studio standards. Call out every weak choice, cliché, and amateurish execution. Minimize praise, maximize specific, actionable fixes. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
 	defaultReversePrompt = "You are reverse-engineering the prompt that likely produced this video. Infer subject, style, camera behavior, motion language, lighting, typography, color palette, aspect ratio, duration, and rendering style. Output only a single reconstructed prompt as one paragraph. No preamble, no bullets, no explanations."
 )
 
@@ -31,7 +35,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "feedback":
-		if err := runVideoCommand("feedback", os.Args[2:], defaultPrompt); err != nil {
+		if err := runVideoCommand("feedback", os.Args[2:], promptHarsh); err != nil {
 			log.Fatal(err)
 		}
 	case "reverse":
@@ -62,14 +66,15 @@ func printUsage() {
 Options:
   -video string     Path to a video file (required)
   -model string     Gemini model name (default: %s)
-  -prompt string    Prompt to guide feedback
+  -prompt string    Prompt override (feedback or reverse)
+  -tone string      Feedback harshness: nice|normal|harsh|super-harsh (default: %s)
   -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
   -h, --help        Show help
 
 Examples:
   video-agent-skills feedback -video ./examples/RefreshAgent-Demo-30s.mp4
   video-agent-skills reverse -video ./examples/RefreshAgent-Demo-30s.mp4
-`, defaultModel)
+`, defaultModel, defaultTone)
 }
 
 func printCommandUsage(command string) {
@@ -93,9 +98,10 @@ Options:
   -video string     Path to a video file (required)
   -model string     Gemini model name (default: %s)
   -prompt string    Prompt to guide feedback
+  -tone string      Feedback harshness: nice|normal|harsh|super-harsh (default: %s)
   -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
   -h, --help        Show help
-`, defaultModel)
+`, defaultModel, defaultTone)
 	}
 }
 
@@ -105,6 +111,7 @@ func runVideoCommand(command string, args []string, promptDefault string) error 
 		videoPath = fs.String("video", "", "Path to a video file")
 		model     = fs.String("model", defaultModel, "Gemini model name")
 		prompt    = fs.String("prompt", promptDefault, "Prompt to guide output")
+		tone      = fs.String("tone", defaultTone, "Feedback harshness: nice|normal|harsh|super-harsh")
 		apiKey    = fs.String("api-key", "", "Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)")
 		help      = fs.Bool("help", false, "Show help")
 		h         = fs.Bool("h", false, "Show help")
@@ -127,6 +134,28 @@ func runVideoCommand(command string, args []string, promptDefault string) error 
 
 	if *videoPath == "" {
 		return errors.New("-video is required")
+	}
+
+	promptValue := *prompt
+	promptSet := false
+	toneSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "prompt" {
+			promptSet = true
+		}
+		if f.Name == "tone" {
+			toneSet = true
+		}
+	})
+
+	if !promptSet && command == "feedback" {
+		selection, err := feedbackPromptForTone(*tone)
+		if err != nil {
+			return err
+		}
+		promptValue = selection
+	} else if command != "feedback" && toneSet {
+		log.Printf("warning: -tone is ignored for %s", command)
 	}
 
 	if err := loadEnvFile(defaultConfigEnvPath()); err != nil {
@@ -176,7 +205,7 @@ func runVideoCommand(command string, args []string, promptDefault string) error 
 
 	parts := []*genai.Part{
 		genai.NewPartFromURI(uploaded.URI, uploaded.MIMEType),
-		genai.NewPartFromText(*prompt),
+		genai.NewPartFromText(promptValue),
 	}
 
 	contents := []*genai.Content{
@@ -190,6 +219,21 @@ func runVideoCommand(command string, args []string, promptDefault string) error 
 
 	fmt.Println(response.Text())
 	return nil
+}
+
+func feedbackPromptForTone(tone string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(tone)) {
+	case "nice":
+		return promptNice, nil
+	case "normal":
+		return promptNormal, nil
+	case "harsh":
+		return promptHarsh, nil
+	case "super-harsh", "superharsh":
+		return promptSuperHarsh, nil
+	default:
+		return "", fmt.Errorf("unknown tone %q (expected nice|normal|harsh|super-harsh)", tone)
+	}
 }
 
 func detectVideoMIME(path string) (string, error) {
