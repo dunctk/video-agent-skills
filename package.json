@@ -1,6 +1,6 @@
 {
   "name": "@dunctk/video-agent-skills",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Claude Code skill installer for video-agent-skills.",
   "license": "MIT",
   "private": false,
