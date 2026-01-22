@@ -27,6 +27,7 @@ Run the bundled binary in this skill folder:
 Notes:
 - Omit `-prompt` if the user did not provide custom guidance.
 - You can pass `-model` or `-api-key` if the user specifies them.
+- On Windows, the binary name ends with `.exe`.
 
 ## Output handling
 Return the tool output directly to the user. If the tool reports missing API keys or file errors, surface the error and ask the user to resolve it.

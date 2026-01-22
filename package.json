@@ -1,0 +1,20 @@
+{
+  "name": "@dunctk/video-agent-skills",
+  "version": "0.1.0",
+  "description": "Claude Code skill installer for video-agent-skills.",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "claude-skill/",
+    "install.js",
+    "main.go",
+    "go.mod",
+    "go.sum"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
