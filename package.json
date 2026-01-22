@@ -4,6 +4,14 @@
   "description": "Claude Code skill installer for video-agent-skills.",
   "license": "MIT",
   "private": false,
+  "homepage": "https://github.com/dunctk/video-agent-skills",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dunctk/video-agent-skills.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dunctk/video-agent-skills/issues"
+  },
   "scripts": {
     "postinstall": "node install.js"
   },
