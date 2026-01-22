@@ -17,6 +17,11 @@ Then run:
 video-agent-skills feedback -video /path/to/video.mp4
 ```
 
+Reverse engineer the likely prompt used to create a finished video:
+```bash
+video-agent-skills reverse -video /path/to/video.mp4
+```
+
 ## Configure API key
 The tool reads `GEMINI_API_KEY` or `GOOGLE_API_KEY` from your environment. You can also place it in:
 
@@ -32,11 +37,12 @@ GEMINI_API_KEY=your_key_here
 ## CLI usage
 ```
 video-agent-skills feedback -video <path> [options]
+video-agent-skills reverse  -video <path> [options]
 
 Options:
   -video string     Path to a video file (required)
   -model string     Gemini model name (default: gemini-3-flash-preview)
-  -prompt string    Prompt to guide feedback
+  -prompt string    Prompt override (feedback or reverse)
   -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
 ```
 

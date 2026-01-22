@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	defaultModel  = "gemini-3-flash-preview"
-	defaultPrompt = "You are a senior motion designer and creative director. Be direct and a bit harsh. Critique storytelling, camera movement, visibility/legibility of key elements, timing, and overall professional polish, plus pacing, rhythm, transitions, typography, composition, color, and easing. Call out what looks amateurish or generic. Provide more improvement ideas than praise. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	defaultModel         = "gemini-3-flash-preview"
+	defaultPrompt        = "You are a senior motion designer and creative director. Be direct and a bit harsh. Critique storytelling, camera movement, visibility/legibility of key elements, timing, and overall professional polish, plus pacing, rhythm, transitions, typography, composition, color, and easing. Call out what looks amateurish or generic. Provide more improvement ideas than praise. Output format:\n1) Quick read (2-3 sentences)\n2) Strengths (2 bullets max)\n3) Issues (6 bullets)\n4) Improvements (6 bullets, each with a concrete fix; include approximate timecodes if possible)."
+	defaultReversePrompt = "You are reverse-engineering the prompt that likely produced this video. Infer subject, style, camera behavior, motion language, lighting, typography, color palette, aspect ratio, duration, and rendering style. Output only a single reconstructed prompt as one paragraph. No preamble, no bullets, no explanations."
 )
 
 func main() {
@@ -30,7 +31,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "feedback":
-		if err := runFeedback(os.Args[2:]); err != nil {
+		if err := runVideoCommand("feedback", os.Args[2:], defaultPrompt); err != nil {
+			log.Fatal(err)
+		}
+	case "reverse":
+		if err := runVideoCommand("reverse", os.Args[2:], defaultReversePrompt); err != nil {
 			log.Fatal(err)
 		}
 	default:
@@ -52,6 +57,7 @@ func isHelpArg(arg string) bool {
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage:
   video-agent-skills feedback -video <path> [options]
+  video-agent-skills reverse  -video <path> [options]
 
 Options:
   -video string     Path to a video file (required)
@@ -62,29 +68,60 @@ Options:
 
 Examples:
   video-agent-skills feedback -video ./examples/RefreshAgent-Demo-30s.mp4
+  video-agent-skills reverse -video ./examples/RefreshAgent-Demo-30s.mp4
 `, defaultModel)
 }
 
-func runFeedback(args []string) error {
+func printCommandUsage(command string) {
+	switch command {
+	case "reverse":
+		fmt.Fprintf(os.Stderr, `Usage:
+  video-agent-skills reverse -video <path> [options]
+
+Options:
+  -video string     Path to a video file (required)
+  -model string     Gemini model name (default: %s)
+  -prompt string    Prompt override for reverse engineering
+  -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
+  -h, --help        Show help
+`, defaultModel)
+	default:
+		fmt.Fprintf(os.Stderr, `Usage:
+  video-agent-skills feedback -video <path> [options]
+
+Options:
+  -video string     Path to a video file (required)
+  -model string     Gemini model name (default: %s)
+  -prompt string    Prompt to guide feedback
+  -api-key string   Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)
+  -h, --help        Show help
+`, defaultModel)
+	}
+}
+
+func runVideoCommand(command string, args []string, promptDefault string) error {
 	var (
-		fs        = flag.NewFlagSet("feedback", flag.ContinueOnError)
+		fs        = flag.NewFlagSet(command, flag.ContinueOnError)
 		videoPath = fs.String("video", "", "Path to a video file")
 		model     = fs.String("model", defaultModel, "Gemini model name")
-		prompt    = fs.String("prompt", defaultPrompt, "Prompt to guide feedback")
+		prompt    = fs.String("prompt", promptDefault, "Prompt to guide output")
 		apiKey    = fs.String("api-key", "", "Gemini API key (overrides GEMINI_API_KEY/GOOGLE_API_KEY)")
 		help      = fs.Bool("help", false, "Show help")
 		h         = fs.Bool("h", false, "Show help")
 	)
+	fs.Usage = func() {
+		printCommandUsage(command)
+	}
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			printUsage()
+			fs.Usage()
 			return nil
 		}
 		return err
 	}
 	if *help || *h {
-		printUsage()
+		fs.Usage()
 		return nil
 	}
 

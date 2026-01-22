@@ -22,6 +22,14 @@ Run the bundled binary in this skill folder:
 {skill_dir}/bin/video-agent-skills feedback \
   -video "{video_path}" \
   -prompt "{optional_user_prompt}"
+
+For reverse-engineering the likely prompt used to make a video:
+
+```bash
+{skill_dir}/bin/video-agent-skills reverse \
+  -video "{video_path}" \
+  -prompt "{optional_user_prompt}"
+```
 ```
 
 Notes:
