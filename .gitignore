@@ -1,0 +1,17 @@
+.env
+.env.*
+examples/
+vendor/
+bin/
+build/
+dist/
+coverage/
+*.out
+*.test
+*.coverprofile
+*.exe
+*.dll
+*.so
+*.dylib
+/video-agent-skills
+/video-feedback
