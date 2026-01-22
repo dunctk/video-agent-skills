@@ -68,5 +68,4 @@ Supported prebuilt targets:
 - windows/amd64
 
 ## Example feedback
-![Example feedback output](docs/video-feedback-example.png)
-
+![Example feedback output](docs/example-feedback.png)
