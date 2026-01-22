@@ -1,5 +1,6 @@
 .env
 .env.*
+.DS_Store
 examples/
 vendor/
 bin/
@@ -13,5 +14,6 @@ coverage/
 *.dll
 *.so
 *.dylib
+/claude-skill/video-agent-skills/bin/video-agent-skills
 /video-agent-skills
 /video-feedback
